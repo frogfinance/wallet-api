@@ -1,0 +1,3 @@
+// start app
+//
+// initialize workers

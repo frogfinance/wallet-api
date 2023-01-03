@@ -1,0 +1,52 @@
+version: '3.7'
+
+services:
+  api:
+    build:
+      context: .
+      target: development-build-stage
+      dockerfile: Dockerfile
+    container_name: api
+    environment:
+      NODE_ENV: development
+      REDIS_URL: redis://cache:6379/0
+      LOG_LEVEL: debug
+    ports:
+      - '4000:3030'
+    restart: 'unless-stopped'
+    networks:
+      - backend
+    links:
+      - pg
+    depends_on:
+      - pg
+  pg:
+    image: postgres:14-alpine
+    container_name: pg
+    environment:
+      POSTGRES_DB: 'frogfinance'
+      POSTGRES_USER: 'frogadmin'
+      POSTGRES_PASSWORD: '8Dcfe7FpKdKpRtxecXg3sRrukxUNze4q'
+    ports:
+      - 15432:5432
+    networks:
+      - backend
+  cache:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - '16379:6379'
+    command: redis-server --appendonly yes
+    volumes:
+      - cache:/data
+
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  data:
+    driver: local
+  cache:
+    driver: local

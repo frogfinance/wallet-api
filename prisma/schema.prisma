@@ -1,0 +1,170 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                Int                @id @default(autoincrement())
+  uuid              String             @unique
+  email             String             @unique
+  password          String
+  name              String?
+  avatar            String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  otp               String?            @unique
+  preferences       Json
+  isAdmin           Boolean            @default(false)
+  UserClaims        UserClaim[]
+  UserTrades        UserTrades[]
+  UserTokenBalances UserTokenBalance[]
+  Wallets           Wallet[]
+  UserPin           UserPin?
+  TransactionData   TransactionData[]
+
+  @@index([email], type: Hash)
+  @@index([uuid], type: Hash)
+}
+
+model UserClaim {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  tokenId   Int?
+  token     Token?   @relation(fields: [tokenId], references: [id])
+  isClaimed Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}
+
+model Wallet {
+  id           Int         @id @default(autoincrement())
+  userId       Int?
+  blockchainId Int?
+  address      String?     @unique
+  encrypted    String?     @db.VarChar(512)
+  name         String?     @db.VarChar(256)
+  User         User?       @relation(fields: [userId], references: [id])
+  Blockchain   Blockchain? @relation(fields: [blockchainId], references: [id])
+
+  @@index([address], type: Hash)
+  @@index([userId], type: Hash)
+}
+
+model UserPin {
+  id            Int      @id @default(autoincrement())
+  pin           String?
+  resetAttempts Int      @default(0)
+  userId        Int?     @unique
+  isLocked      Boolean  @default(false)
+  updatedAt     DateTime @updatedAt
+  User          User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId], type: Hash)
+}
+
+model WalletSalt {
+  id       Int     @id @default(autoincrement())
+  walletId Int     @unique
+  salt     String? @unique @db.VarChar(255)
+  keySalt  String? @db.VarChar(255)
+
+  @@index([walletId], type: Hash)
+}
+
+model Token {
+  id               Int                @id @default(autoincrement())
+  address          String?            @unique
+  hash             String?            @db.VarChar(255)
+  name             String?            @db.VarChar(255)
+  symbol           String?            @db.VarChar(16)
+  blockchainId     Int?
+  decimals         Int?
+  isNative         Boolean            @default(false)
+  contractType     Contract?
+  UserClaim        UserClaim[]
+  UserTokenBalance UserTokenBalance[]
+  Blockchain       Blockchain[]
+
+  @@index([contractType], type: Hash)
+}
+
+model UserTrades {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  user           User?    @relation(fields: [userId], references: [id])
+  hash           String?  @unique @db.VarChar(255)
+  name           String?  @db.VarChar(255)
+  tokenInId      Int
+  tokenOutId     Int
+  blockchainId   Int
+  costBasis      String?
+  tokenInUSDVal  String?
+  tokenOutUSDVal String?
+  data           Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId], type: Hash)
+  @@index([hash], type: Hash)
+}
+
+model UserTokenBalance {
+  id          Int     @id @default(autoincrement())
+  userId      Int
+  user        User?   @relation(fields: [userId], references: [id])
+  balance     String? @db.VarChar(255)
+  nftTokenIds Json
+  tokenId     Int
+  token       Token?  @relation(fields: [tokenId], references: [id])
+
+  @@index([userId], type: Hash)
+}
+
+model Blockchain {
+  id   Int    @id @default(autoincrement())
+  name String @db.VarChar(64)
+
+  Wallet  Wallet[]
+  Token   Token?   @relation(fields: [tokenId], references: [id])
+  tokenId Int?
+}
+
+model AuditLog {
+  id          Int     @id @default(autoincrement())
+  userId      Int?
+  description String? @db.VarChar(255)
+}
+
+model TransactionData {
+  id           Int     @id @default(autoincrement())
+  blockchainId Int?
+  hash         String? @unique
+  txState      TxState
+  rawData      Json?
+  walletId     Int?
+  userId       Int
+  User         User    @relation(fields: [userId], references: [id])
+
+  @@index([hash], type: Hash)
+  @@index([userId], type: Hash)
+}
+
+enum Contract {
+  ERC20
+  ERC1404
+  ERC721
+  ERC1155
+}
+
+enum TxState {
+  PENDING
+  COMPLETE
+  VERIFIED
+}
